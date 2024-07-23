@@ -1,122 +1,80 @@
 <!DOCTYPE html>
-<html lang="en-us">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity WebGL Player | maze2</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
-  </head>
-  <body>
-    <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
-        </div>
-      </div>
-      <div id="unity-warning"> </div>
-      <div id="unity-footer">
-        <div id="unity-webgl-logo"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">maze2</div>
-      </div>
-    </div>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Unity WebGL Player</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+    </style>
+</head>
+<body>
     <script>
+        // Unityのビルドデータをロードする
+        var buildUrl = "Build";
+        var loaderUrl = buildUrl + "/nogzip.loader.js";
+        var config = {
+            dataUrl: buildUrl + "/nogzip.data",
+            frameworkUrl: buildUrl + "/nogzip.framework.js",
+            codeUrl: buildUrl + "/nogzip.wasm",
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "DefaultCompany",
+            productName: "maze2",
+            productVersion: "0.1",
+        };
 
-      var container = document.querySelector("#unity-container");
-      var canvas = document.querySelector("#unity-canvas");
-      var loadingBar = document.querySelector("#unity-loading-bar");
-      var progressBarFull = document.querySelector("#unity-progress-bar-full");
-      var fullscreenButton = document.querySelector("#unity-fullscreen-button");
-      var warningBanner = document.querySelector("#unity-warning");
+        var container = document.createElement("div");
+        container.id = "unity-container";
+        document.body.appendChild(container);
 
-      // Shows a temporary message banner/ribbon for a few seconds, or
-      // a permanent error message on top of the canvas if type=='error'.
-      // If type=='warning', a yellow highlight color is used.
-      // Modify or remove this function to customize the visually presented
-      // way that non-critical warnings and error messages are presented to the
-      // user.
-      function unityShowBanner(msg, type) {
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        var canvas = document.createElement("canvas");
+        container.appendChild(canvas);
+
+        var loadingBar = document.createElement("div");
+        loadingBar.id = "loading-bar";
+        container.appendChild(loadingBar);
+
+        var progressBarFull = document.createElement("div");
+        progressBarFull.id = "progress-bar-full";
+        loadingBar.appendChild(progressBarFull);
+
+        var unityInstance = UnityLoader.instantiate("unity-container", loaderUrl, config);
+
+        // ジャイロデータをUnityに送信する
+        function handleOrientation(event) {
+            var rotationX = event.beta / 180 * Math.PI; // X軸の回転
+            var rotationZ = event.gamma / 180 * Math.PI; // Z軸の回転
+            unityInstance.SendMessage('Plane', 'UpdateRotation', rotationX + ',' + rotationZ);
         }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
+
+        // ジャイロセンサーの使用許可をリクエスト
+        function requestGyroAccess() {
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission()
+                    .then(response => {
+                        if (response === 'granted') {
+                            window.addEventListener("deviceorientation", handleOrientation);
+                        } else {
+                            alert('Gyroscope access denied');
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                window.addEventListener("deviceorientation", handleOrientation);
+            }
         }
-        updateBannerVisibility();
-      }
 
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/nogzip.loader.js";
-      var config = {
-        dataUrl: buildUrl + "/nogzip.data",
-        frameworkUrl: buildUrl + "/nogzip.framework.js",
-        codeUrl: buildUrl + "/nogzip.wasm",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "DefaultCompany",
-        productName: "maze2",
-        productVersion: "0.1",
-        showBanner: unityShowBanner,
-      };
-
-      // By default, Unity keeps WebGL canvas render target size matched with
-      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
-      // Set this to false if you want to decouple this synchronization from
-      // happening inside the engine, and you would instead like to size up
-      // the canvas DOM size and WebGL render target sizes yourself.
-      // config.matchWebGLToCanvasSize = false;
-
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
-
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-        container.className = "unity-mobile";
-        canvas.className = "unity-mobile";
-
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
-
-
-      } else {
-        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
-
-        canvas.style.width = "960px";
-        canvas.style.height = "600px";
-      }
-
-      loadingBar.style.display = "block";
-
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          progressBarFull.style.width = 100 * progress + "%";
-              }).then((unityInstance) => {
-                loadingBar.style.display = "none";
-                fullscreenButton.onclick = () => {
-                  unityInstance.SetFullscreen(1);
-                };
-              }).catch((message) => {
-                alert(message);
-              });
-            };
-
-      document.body.appendChild(script);
-
+        // ボタンを作成して、ユーザーにジャイロセンサーの使用許可をリクエスト
+        var button = document.createElement("button");
+        button.innerHTML = "Enable Gyroscope";
+        button.style.position = "absolute";
+        button.style.top = "10px";
+        button.style.left = "10px";
+        button.style.zIndex = 1000;
+        button.onclick = function() {
+            requestGyroAccess();
+            document.body.removeChild(button);
+        };
+        document.body.appendChild(button);
     </script>
-  </body>
+</body>
 </html>

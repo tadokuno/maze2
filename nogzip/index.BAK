@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Unity WebGL Player</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+    </style>
+</head>
+<body>
+    <script>
+        // Unityのビルドデータをロードする
+        var buildUrl = "Build";
+        var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+        var config = {
+            dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+            frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+            codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "{{{ COMPANY_NAME }}}",
+            productName: "{{{ PRODUCT_NAME }}}",
+            productVersion: "{{{ PRODUCT_VERSION }}}",
+        };
+
+        var container = document.createElement("div");
+        container.id = "unity-container";
+        document.body.appendChild(container);
+
+        var canvas = document.createElement("canvas");
+        container.appendChild(canvas);
+
+        var loadingBar = document.createElement("div");
+        loadingBar.id = "loading-bar";
+        container.appendChild(loadingBar);
+
+        var progressBarFull = document.createElement("div");
+        progressBarFull.id = "progress-bar-full";
+        loadingBar.appendChild(progressBarFull);
+
+        var unityInstance = UnityLoader.instantiate("unityContainer", loaderUrl, config);
+
+        // ジャイロデータをUnityに送信する
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener("deviceorientation", function(event) {
+                var rotationX = event.beta / 180 * Math.PI; // X軸の回転
+                var rotationZ = event.gamma / 180 * Math.PI; // Z軸の回転
+                unityInstance.SendMessage('Plane', 'UpdateRotation', rotationX + ',' + rotationZ);
+            });
+        }
+    </script>
+</body>
+</html>
